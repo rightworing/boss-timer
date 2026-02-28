@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>頭目重生時間與通知</title>
+    <title>宙斯08頭目重生時間與通知</title>
     <style>
         body {
             background-color: #121212; color: #e0e0e0;
@@ -31,12 +31,12 @@
 
         .boss-container { width: 100%; max-width: 1200px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; align-items: start; }
 
-        /* 🌟 重製卡片排版：移除 wrap，改成 tops 对齐适应垂直按鈕 */
+        /* 卡片排版 */
         .boss-card {
             background-color: #1e1e1e; border: 2px solid #333; border-left-width: 8px;
             padding: 12px 15px; border-radius: 8px;
             display: flex; flex-wrap: nowrap;
-            justify-content: space-between; align-items: flex-start; /* 頂部對齊以適應垂直排列按鈕的高度 */
+            justify-content: space-between; align-items: flex-start;
             transition: all 0.3s ease-in-out; box-sizing: border-box; width: 100%;
             gap: 10px;
         }
@@ -52,14 +52,12 @@
 
         /* 左側文字區塊 */
         .info-section { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; padding-top: 5px;}
-
         .boss-name { font-size: 1.25em; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .boss-tag { font-size: 0.65em; background-color: #444; color: #ddd; padding: 3px 6px; border-radius: 4px; font-weight: normal; white-space: nowrap; flex-shrink: 0;}
         .boss-tag.fixed-daily { background-color: #004066; color: #80cfff; border: 1px solid #4da6ff; }
         .boss-tag.fixed-weekly { background-color: #3b1f5c; color: #d9b3ff; border: 1px solid #b266ff;}
         .boss-interval.fast-mode-text { color: #ff9999; font-weight: bold; }
 
-        /* 完全移除隱藏語法，確保文字完整顯示，並應用精簡後的文字 */
         .time-display { font-size: 1.1em; color: #ccc; white-space: nowrap; }
         .boss-card.type-interval .time-display strong { color: #d4af37; font-size: 1.15em; transition: color 0.3s;}
         .boss-card.type-daily .time-display strong { color: #4da6ff; font-size: 1.15em; transition: color 0.3s;}
@@ -72,39 +70,41 @@
 
         .boss-status { font-size: 0.95em; font-family: monospace; white-space: nowrap; }
 
-        /* 🌟 右側控制區塊：嚴格垂直排列靠右 */
-        .control-section {
-            display: flex;
-            flex-direction: column; /* 垂直排列 */
-            gap: 6px;
-            align-items: flex-end; /* 全部靠右對齊 */
-            flex-shrink: 0;
-        }
-
-        /* 輸入框與記錄按鈕放在同一行 */
-        .control-row {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-        }
+        /* 右側控制區塊：嚴格垂直排列靠右 */
+        .control-section { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+        .control-row { display: flex; gap: 4px; align-items: center; }
 
         input.time-input { background-color: #2c2c2c; color: #fff; border: 1px solid #444; padding: 6px; border-radius: 4px; font-size: 1em; width: 55px; text-align: center; font-family: monospace; }
+        input.time-input:focus { outline: 2px solid #d4af37; background-color: #3d3d3d;} /* 點擊高亮效果 */
 
         button { background-color: #444; color: #fff; border: none; padding: 6px 10px; cursor: pointer; border-radius: 4px; font-size: 0.85em; transition: background 0.2s; white-space: nowrap;}
         button:hover { background-color: #555; }
         button.save-btn { background-color: #2d5a27; } button.save-btn:hover { background-color: #3b7533; }
         button.clear-btn { background-color: #8b4513; } button.clear-btn:hover { background-color: #a0522d; }
 
-        /* 刪除按鈕排在右上，使用小小的 X 文字並移除大邊框 */
         button.delete-btn { background-color: transparent; border: 1px solid #660000; color: #ff6b6b; padding: 2px 6px; font-size: 0.75em; }
         button.delete-btn:hover { background-color: #8b0000; color: #fff; }
 
         button.notify-btn { background-color: #0056b3; } button.notify-btn:hover { background-color: #0073e6; }
         button.sound-on-btn { background-color: #2d5a27; font-weight: bold;} button.sound-off-btn { background-color: #8b0000; color: #ccc;}
 
+        button.backup-btn { background-color: #5b3256; border: 1px solid #8c4c85; } button.backup-btn:hover { background-color: #7a4373; }
+        button.import-btn { background-color: #325b56; border: 1px solid #4c8c85; } button.import-btn:hover { background-color: #437a73; }
         button#speedToggleBtn { font-weight: bold; font-size: 0.9em; }
-        button#speedToggleBtn.normal { background-color: #555; }
-        button#speedToggleBtn.fast { background-color: #b30000; box-shadow: 0 0 15px #ff4d4d; }
+        button#speedToggleBtn.normal { background-color: #555; } button#speedToggleBtn.fast { background-color: #b30000; box-shadow: 0 0 15px #ff4d4d; }
+
+        /* 下方使用說明書面板 */
+        .instructions-panel {
+            width: 100%; max-width: 1200px; margin-top: 40px; margin-bottom: 20px;
+            background-color: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+            padding: 20px; color: #ccc; box-sizing: border-box; line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .instructions-panel h2 { color: #d4af37; font-size: 1.3em; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .instructions-panel h3 { color: #fff; font-size: 1.1em; margin-bottom: 5px; margin-top: 15px;}
+        .instructions-panel ul { margin-top: 5px; padding-left: 20px; }
+        .instructions-panel li { margin-bottom: 8px; }
+        .color-box { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: text-bottom; }
 
         @keyframes pulseWarning { 0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.6), inset 0 0 10px rgba(255, 204, 0, 0.2); } 50% { box-shadow: 0 0 35px rgba(255, 204, 0, 1), inset 0 0 15px rgba(255, 204, 0, 0.5); } 100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.6), inset 0 0 10px rgba(255, 204, 0, 0.2); } }
         @keyframes pulseUrgent { 0% { box-shadow: 0 0 25px rgba(255, 0, 0, 0.8), inset 0 0 10px rgba(255, 0, 0, 0.3); } 50% { box-shadow: 0 0 40px rgba(255, 0, 0, 1), inset 0 0 15px rgba(255, 0, 0, 0.6); } 100% { box-shadow: 0 0 25px rgba(255, 0, 0, 0.8), inset 0 0 10px rgba(255, 0, 0, 0.3); } }
@@ -115,13 +115,17 @@
 </head>
 <body>
 
-    <h1>頭目重生時間與通知</h1>
-    <div id="syncStatus">🔴 尚未連線至雲端資料庫 (請設定 Firebase 金鑰)</div>
+    <h1>宙斯08頭目重生時間與通知</h1>
+    <div id="syncStatus">🔴 尚未連線至雲端資料庫 (單機模式)</div>
     <div id="currentTime">現在時間: 載入中...</div>
 
     <div class="panel-container">
         <div class="settings-panel">
             <div class="top-btn-group">
+                <button class="backup-btn" onclick="exportData()">💾 匯出備份</button>
+                <button class="import-btn" onclick="document.getElementById('importFile').click()">📂 匯入還原</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+
                 <button id="notifyAuthBtn" class="notify-btn" onclick="requestNotificationPermission()">🔔 授權通知</button>
                 <button id="soundToggleBtn" class="sound-on-btn" onclick="toggleSound()">🔊 音效: 開</button>
                 <span style="font-size:0.9em; margin-left: 5px;">提前 <input type="number" id="notifyMin" class="notify-input" value="5" min="1" max="60" onchange="saveNotifySetting()"> 分提醒</span>
@@ -154,25 +158,50 @@
 
     <div class="boss-container" id="bossContainer"></div>
 
+    <div class="instructions-panel">
+        <h2>📖 系統使用說明與顏色指南</h2>
+
+        <h3>🎨 卡片狀態與顏色</h3>
+        <ul>
+            <li><span class="color-box" style="background:#ffcc00;"></span> <strong>黃色警戒：</strong> 倒數 30 分鐘內，卡片會發出黃光並緩慢閃爍，提醒準備集結。</li>
+            <li><span class="color-box" style="background:#ff1a1a;"></span> <strong>紅色警戒：</strong> 倒數 10 分鐘內，卡片會發出強烈紅光並加速閃爍，隨時準備出王！</li>
+            <li><span class="color-box" style="background:#1a1a1a; border: 1px solid #555;"></span> <strong>灰色沉底：</strong> 尚未記錄時間，或是王已經重生太久，會自動變暗並排在最下方。</li>
+        </ul>
+
+        <h3>🏷️ 頭目種類標籤</h3>
+        <ul>
+            <li><span class="color-box" style="border-left: 4px solid #d4af37;"></span> <strong>金色邊框 (間隔王)：</strong> 依據擊殺時間往後推算。</li>
+            <li><span class="color-box" style="border-left: 4px solid #4da6ff;"></span> <strong>藍色邊框 (每日王)：</strong> 每天固定時間出沒。超過時間 2 小時後會自動切換至隔天。</li>
+            <li><span class="color-box" style="border-left: 4px solid #b266ff;"></span> <strong>紫色邊框 (每週王)：</strong> 每週固定日期與時間出沒。</li>
+        </ul>
+
+        <h3>🛠️ 進階操作技巧</h3>
+        <ul>
+            <li><strong>快速輸入：</strong> 點擊時間輸入框時會「自動全選」，不需要按倒退鍵，直接輸入數字 (例如 <code>1647</code>) 即可快速覆蓋。</li>
+            <li><strong>雲端同步：</strong> 時間只要一按記錄，全血盟開啟此網頁的成員都會瞬間同步更新，不需重新整理。</li>
+            <li><strong>手機通知：</strong> 蘋果 (iOS) 用戶請務必將網頁<strong>「加入主畫面」</strong>，從桌面打開才能順利收到橫幅通知喔！</li>
+        </ul>
+    </div>
+
     <script>
         // =========================================================================
-        // 👇👇👇 請把你的 firebaseConfig 貼在這裡 👇👇👇
+        // 👇 Firebase 金鑰 (已更新為您的專屬資料庫) 👇
         // =========================================================================
         const firebaseConfig = {
-		  apiKey: "AIzaSyAqlwSt86d_7NQzNFhQz9gSbtQQ3WG9pF8",
-		  authDomain: "bosstimer-cf701.firebaseapp.com",
-		  databaseURL: "https://bosstimer-cf701-default-rtdb.firebaseio.com",
-		  projectId: "bosstimer-cf701",
-		  storageBucket: "bosstimer-cf701.firebasestorage.app",
-		  messagingSenderId: "965297582620",
-		  appId: "1:965297582620:web:382e36ca91b5f53050e5d9"
+            apiKey: "AIzaSyAqlwSt86d_7NQzNFhQz9gSbtQQ3WG9pF8",
+            authDomain: "bosstimer-cf701.firebaseapp.com",
+            databaseURL: "https://bosstimer-cf701-default-rtdb.firebaseio.com",
+            projectId: "bosstimer-cf701",
+            storageBucket: "bosstimer-cf701.firebasestorage.app",
+            messagingSenderId: "965297582620",
+            appId: "1:965297582620:web:382e36ca91b5f53050e5d9"
         };
         // =========================================================================
 
         let db;
         let isFirebaseActive = false;
 
-        // 🌟 更新預設數據：使用您提供的王名和具體時間
+        // 預設資料 (若雲端全空時的初始值)
         const defaultBossConfig = {
             "史前巨鱷": { type: 'interval', value: 4 }, "大腳": { type: 'interval', value: 4 },
             "巨人": { type: 'interval', value: 12 }, "拉馬修": { type: 'interval', value: 8 },
@@ -180,7 +209,7 @@
         };
         const defaultRecords = {
             "史前巨鱷": "11:05", "大腳": "15:02", "巨人": "09:14",
-            "拉馬修": "16:47", "哈格馬": "10:26", "庫爾托": null // 留白，排序將在最後
+            "拉馬修": "16:47", "哈格馬": "10:26", "庫爾托": null
         };
 
         let bossConfig = JSON.parse(JSON.stringify(defaultBossConfig));
@@ -192,7 +221,7 @@
         let notifiedSpawns = {};
         let audioCtx = null;
 
-        // 系統初始化 (先讀取本地設定如音效、通知時間)
+        // 系統初始化 (讀取本地偏好設定)
         try {
             const savedNotify = localStorage.getItem('bossNotifyMin');
             if (savedNotify) notifyMinutes = parseInt(savedNotify);
@@ -213,7 +242,7 @@
         });
 
         // ================= Firebase 雲端連線設定 =================
-        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "在這裡貼上你的 apiKey") {
+        if (firebaseConfig.apiKey) {
             try {
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
@@ -224,7 +253,7 @@
                 statusEl.style.color = "#a0ffaa";
                 statusEl.style.background = "#1a331a";
 
-                // 監聽【雙倍速模式】全網同步
+                // 監聽【雙倍速模式】
                 db.ref('settings/isFastMode').on('value', (snapshot) => {
                     const val = snapshot.val();
                     if (val !== null) {
@@ -234,24 +263,23 @@
                     }
                 });
 
-                // 監聽【頭目設定清單】全網同步
+                // 監聽【頭目設定清單】
                 db.ref('bossConfig').on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data) bossConfig = data;
-                    else {
-                        // 如果雲端是空的，把預設資料推上雲端
+                    if (data) {
+                        bossConfig = data;
+                    } else {
                         db.ref('bossConfig').set(defaultBossConfig);
                         bossConfig = defaultBossConfig;
                     }
-                    statusEl.innerText = "🟢 已連線：雲端資料同步中";
+                    statusEl.innerText = "🟢 已連線：全團資料同步中";
                     renderBossCards();
                 });
 
-                // 監聽【擊殺時間記錄】全網同步
+                // 監聽【擊殺時間記錄】
                 db.ref('bossData').on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        // 確保所有 Config 裡的王都有 Data 欄位
                         Object.keys(bossConfig).forEach(name => {
                             if (data[name] === undefined) data[name] = null;
                         });
@@ -269,10 +297,45 @@
                 renderBossCards();
             }
         } else {
-            renderBossCards(); // 沒設定 API 時先畫出預設單機畫面
+            renderBossCards();
         }
-        // ==========================================================
 
+        // ================= 備份與還原 =================
+        window.exportData = function() {
+            const backupData = { config: bossConfig, records: bossData };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "boss_timer_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        };
+
+        window.importData = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.config && importedData.records) {
+                        if (isFirebaseActive) {
+                            db.ref('bossConfig').set(importedData.config);
+                            db.ref('bossData').set(importedData.records);
+                        } else {
+                            bossConfig = importedData.config;
+                            bossData = importedData.records;
+                        }
+                        alert("✅ 資料還原成功！雲端已同步。");
+                        document.getElementById('importFile').value = ''; // 清空選擇
+                    } else { alert("❌ 檔案格式不正確，請選擇匯出的備份檔！"); }
+                } catch (err) { alert("❌ 讀取檔案失敗！"); }
+            };
+            reader.readAsText(file);
+        };
+
+        // ================= UI 操作 =================
         function checkNotificationStatus() {
             if ("Notification" in window && Notification.permission === "granted") {
                 const btn = document.getElementById('notifyAuthBtn');
@@ -291,7 +354,7 @@
         window.handleEnter = function(event, name) { if (event.key === 'Enter') window.saveTime(name); };
         window.saveNotifySetting = function() {
             notifyMinutes = parseInt(document.getElementById('notifyMin').value) || 5;
-			notifiedSpawns = {};
+            notifiedSpawns = {}; // 更改時間時重置通知記憶
             try { localStorage.setItem('bossNotifyMin', notifyMinutes); } catch(e) {}
         };
 
@@ -328,7 +391,7 @@
                 let modeTagHtml = '';
                 let controlHtml = '';
 
-                // 🌟 重新建構控制面板：嚴格垂直排列靠右，X排右上
+                // 🌟 右側控制面板 (加入 onfocus="this.select()" 一鍵全選)
                 if (config.type === 'interval') {
                     const displayVal = isFastMode ? config.value / 2 : config.value;
                     const tagClass = isFastMode ? "boss-tag fast-mode-text" : "boss-tag";
@@ -338,28 +401,23 @@
                     controlHtml = `
                         <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
                         <div class="control-row">
-                            <input type="text" class="time-input" id="input-${name}" value="${savedTime}" placeholder="1647" maxlength="5" oninput="formatTimeInput(this)" onkeypress="handleEnter(event, '${name}')">
+                            <input type="text" class="time-input" id="input-${name}" value="${savedTime}" placeholder="1647" maxlength="5" oninput="formatTimeInput(this)" onkeypress="handleEnter(event, '${name}')" onfocus="this.select()">
                             <button class="save-btn" onclick="saveTime('${name}')">記錄</button>
                         </div>
                         <button class="clear-btn" onclick="clearTime('${name}')">清除時間</button>
                     `;
                 } else if (config.type === 'daily') {
                     modeTagHtml = `<span class="boss-tag fixed-daily">每日 ${config.time}</span>`;
-                    // 🌟 固定王也採用垂直靠右佈局
-                    controlHtml = `
-                        <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
-                    `;
+                    controlHtml = `<button class="delete-btn" style="border:none;" onclick="deleteBoss('${name}')">✖ 刪除</button>`;
                 } else if (config.type === 'weekly') {
                     const days = ["週日","週一","週二","週三","週四","週五","週六"];
                     modeTagHtml = `<span class="boss-tag fixed-weekly">${days[config.day]} ${config.time}</span>`;
-                    controlHtml = `
-                        <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
-                    `;
+                    controlHtml = `<button class="delete-btn" style="border:none;" onclick="deleteBoss('${name}')">✖ 刪除</button>`;
                 }
 
                 card.innerHTML = `
                     <div class="info-section">
-                        <div class="boss-name"><span class="name-text">${name}</span> ${modeTagHtml}</div>
+                        <div class="boss-name">${name} ${modeTagHtml}</div>
                         <div class="time-display" id="timeDisplay-${name}">計算中...</div>
                         <div class="boss-status" id="status-${name}">-</div>
                     </div>
@@ -370,7 +428,7 @@
             updateAndSort();
         }
 
-        // ================= 將儲存動作改為推上雲端 =================
+        // ================= 推上雲端邏輯 =================
         window.addNewBoss = function() {
             if (!isFirebaseActive) return alert("請先設定 Firebase 金鑰才能使用新增功能！");
 
@@ -397,7 +455,6 @@
                 configObj = { type: 'weekly', day: d, time: t };
             }
 
-            // 寫入雲端
             db.ref('bossConfig/' + nameInput).set(configObj);
             db.ref('bossData/' + nameInput).set(null);
             document.getElementById('newBossName').value = '';
@@ -413,15 +470,13 @@
 
         window.toggleSpeedMode = function() {
             if (!isFirebaseActive) return;
-            // 將雙倍速模式狀態寫入雲端，全團一起加速
             db.ref('settings/isFastMode').set(!isFastMode);
         };
 
         window.saveTime = function(name) {
-            if (!isFirebaseActive) return alert("請先設定 Firebase 金鑰！");
+            if (!isFirebaseActive) return alert("請等待連線完成！");
             let t = parseTimeString(document.getElementById(`input-${name}`).value.trim());
             if (t) {
-                // 將時間寫入雲端，其他人會立刻收到更新
                 db.ref('bossData/' + name).set(t);
             } else { alert("格式錯誤！請輸入如 1647 或 16:47"); }
         };
@@ -533,14 +588,12 @@
 
                         const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
                         const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
-                        // 🌟 精簡時間顯示文字
                         displayEl.innerHTML = `擊殺 ${killTimeRecord} ➔ <strong>${spH}:${spM}</strong>`;
 
                     } else {
                         nextSpawnDate = getNextFixedTime(now, config.type, config.time, config.day);
                         const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
                         const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
-                        // 🌟 精簡時間顯示文字
                         displayEl.innerHTML = `預計 <strong>${spH}:${spM}</strong>`;
                     }
 
@@ -592,6 +645,4 @@
 
     </script>
 </body>
-
 </html>
-
