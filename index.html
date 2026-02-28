@@ -90,6 +90,15 @@
         
         button.backup-btn { background-color: #5b3256; border: 1px solid #8c4c85; } button.backup-btn:hover { background-color: #7a4373; }
         button.import-btn { background-color: #325b56; border: 1px solid #4c8c85; } button.import-btn:hover { background-color: #437a73; }
+        
+        /* 🌟 複製時刻表按鈕專屬樣式 */
+        button.copy-btn { background-color: #2d5a88; border: 1px solid #4a82b5; font-weight: bold; } 
+        button.copy-btn:hover { background-color: #3b75b3; }
+
+        /* 🌟 單獨卡片複製按鈕樣式 */
+        button.copy-single-btn { background-color: #333; border: 1px solid #555; color: #ccc; padding: 2px 8px; font-size: 0.8em; transition: 0.2s; }
+        button.copy-single-btn:hover { background-color: #4a82b5; color: #fff; border-color: #4a82b5; }
+
         button#speedToggleBtn { font-weight: bold; font-size: 0.9em; }
         button#speedToggleBtn.normal { background-color: #555; } button#speedToggleBtn.fast { background-color: #b30000; box-shadow: 0 0 15px #ff4d4d; }
 
@@ -122,6 +131,7 @@
     <div class="panel-container">
         <div class="settings-panel">
             <div class="top-btn-group">
+                <button class="copy-btn" onclick="copyBossTimes()">📋 複製全團時刻表</button>
                 <button class="backup-btn" onclick="exportData()">💾 匯出備份</button>
                 <button class="import-btn" onclick="document.getElementById('importFile').click()">📂 匯入還原</button>
                 <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
@@ -177,6 +187,7 @@
 
         <h3>🛠️ 進階操作技巧</h3>
         <ul>
+            <li><strong>一鍵複製：</strong> 點擊上方可複製全團時刻表，或點擊每隻王卡片右上角的「📋 複製」，將單隻王的時間貼到群組！</li>
             <li><strong>快速輸入：</strong> 點擊時間輸入框時會「自動全選」，不需要按倒退鍵，直接輸入數字 (例如 <code>1647</code>) 即可快速覆蓋。</li>
             <li><strong>雲端同步：</strong> 時間只要一按記錄，全血盟開啟此網頁的成員都會瞬間同步更新，不需重新整理。</li>
             <li><strong>手機通知：</strong> 蘋果 (iOS) 用戶請務必將網頁<strong>「加入主畫面」</strong>，從桌面打開才能順利收到橫幅通知喔！</li>
@@ -185,7 +196,7 @@
 
     <script>
         // =========================================================================
-        // 👇 Firebase 金鑰 (已更新為您的專屬資料庫) 👇
+        // 👇 Firebase 金鑰 👇
         // =========================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAqlwSt86d_7NQzNFhQz9gSbtQQ3WG9pF8",
@@ -330,6 +341,192 @@
             reader.readAsText(file);
         };
 
+        // ================= 🌟 複製單一隻王的時間邏輯 =================
+        window.copySingleBoss = function(name, btnElement) {
+            const config = bossConfig[name];
+            if (!config) return;
+            const now = new Date();
+            let timeText = "";
+
+            if (config.type === 'interval') {
+                const killTimeRecord = bossData[name];
+                if (!killTimeRecord || typeof killTimeRecord !== 'string' || !killTimeRecord.includes(':')) {
+                    timeText = "未記錄";
+                } else {
+                    const actualInterval = isFastMode ? (config.value / 2) : config.value;
+                    const [killH, killM] = killTimeRecord.split(':').map(Number);
+                    let killDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), killH || 0, killM || 0, 0);
+                    if (killDate > now) killDate.setDate(killDate.getDate() - 1);
+                    
+                    let nextSpawnDate = new Date(killDate.getTime() + actualInterval * 60 * 60 * 1000);
+                    const diffMs = nextSpawnDate - now;
+
+                    if (diffMs > 0) {
+                        const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                        const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                        timeText = `${spH}:${spM}`;
+                    } else {
+                        const passedMinutes = Math.floor(Math.abs(diffMs) / 1000 / 60);
+                        if (passedMinutes <= 30) {
+                            const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                            const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                            timeText = `${spH}:${spM} (已出)`;
+                        } else {
+                            let nextPossible = new Date(nextSpawnDate.getTime());
+                            while (nextPossible <= now) {
+                                nextPossible.setTime(nextPossible.getTime() + actualInterval * 60 * 60 * 1000);
+                            }
+                            const npH = String(nextPossible.getHours()).padStart(2, '0');
+                            const npM = String(nextPossible.getMinutes()).padStart(2, '0');
+                            timeText = `約 ${npH}:${npM}`;
+                        }
+                    }
+                }
+            } else {
+                let nextSpawnDate = getNextFixedTime(now, config.type, config.time, config.day);
+                const diffMs = nextSpawnDate - now;
+                const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                if (diffMs < 0 && Math.abs(diffMs) <= 30 * 60 * 1000) {
+                    timeText = `${spH}:${spM} (已出)`;
+                } else {
+                    timeText = `${spH}:${spM}`;
+                }
+            }
+
+            let textToCopy = `${name} ${timeText}`;
+
+            // 無干擾視覺回饋特效
+            const originalText = btnElement.innerHTML;
+            const doCopy = (text) => {
+                const showSuccess = () => {
+                    btnElement.innerHTML = "✅ 已複製";
+                    btnElement.style.backgroundColor = "#2d5a27";
+                    btnElement.style.borderColor = "#2d5a27";
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalText;
+                        btnElement.style.backgroundColor = "";
+                        btnElement.style.borderColor = "";
+                    }, 1500);
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(showSuccess).catch(() => fallbackCopyTextToClipboard(text, showSuccess));
+                } else {
+                    fallbackCopyTextToClipboard(text, showSuccess);
+                }
+            };
+            doCopy(textToCopy);
+        };
+
+        // ================= 🌟 複製全團時間表邏輯 =================
+        window.copyBossTimes = function() {
+            const now = new Date();
+            let copyArray = [];
+
+            Object.keys(bossConfig).forEach(name => {
+                const config = bossConfig[name];
+                let timeText = "";
+                let orderWeight = 0;
+
+                if (config.type === 'interval') {
+                    const killTimeRecord = bossData[name];
+                    if (!killTimeRecord || typeof killTimeRecord !== 'string' || !killTimeRecord.includes(':')) {
+                        timeText = "未記錄";
+                        orderWeight = 200000000;
+                    } else {
+                        const actualInterval = isFastMode ? (config.value / 2) : config.value;
+                        const [killH, killM] = killTimeRecord.split(':').map(Number);
+                        let killDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), killH || 0, killM || 0, 0);
+                        if (killDate > now) killDate.setDate(killDate.getDate() - 1);
+                        
+                        let nextSpawnDate = new Date(killDate.getTime() + actualInterval * 60 * 60 * 1000);
+                        const diffMs = nextSpawnDate - now;
+
+                        if (diffMs > 0) {
+                            // 還沒出，正常顯示時間
+                            const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                            const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                            timeText = `${spH}:${spM}`;
+                            orderWeight = diffMs;
+                        } else {
+                            // 已出或錯過
+                            const passedMinutes = Math.floor(Math.abs(diffMs) / 1000 / 60);
+                            if (passedMinutes <= 30) {
+                                const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                                const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                                timeText = `${spH}:${spM} (已出)`;
+                                orderWeight = diffMs; 
+                            } else {
+                                // 錯過太久，推算下次
+                                let nextPossible = new Date(nextSpawnDate.getTime());
+                                while (nextPossible <= now) {
+                                    nextPossible.setTime(nextPossible.getTime() + actualInterval * 60 * 60 * 1000);
+                                }
+                                const npH = String(nextPossible.getHours()).padStart(2, '0');
+                                const npM = String(nextPossible.getMinutes()).padStart(2, '0');
+                                timeText = `約 ${npH}:${npM}`;
+                                orderWeight = nextPossible - now;
+                            }
+                        }
+                    }
+                } else {
+                    // 固定王邏輯
+                    let nextSpawnDate = getNextFixedTime(now, config.type, config.time, config.day);
+                    const diffMs = nextSpawnDate - now;
+                    const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
+                    const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
+                    
+                    if (diffMs < 0 && Math.abs(diffMs) <= 30 * 60 * 1000) {
+                        timeText = `${spH}:${spM} (已出)`;
+                        orderWeight = diffMs;
+                    } else {
+                        timeText = `${spH}:${spM}`;
+                        orderWeight = diffMs;
+                    }
+                }
+
+                copyArray.push({ name, timeText, weight: orderWeight });
+            });
+
+            // 依照時間遠近排序
+            copyArray.sort((a, b) => a.weight - b.weight);
+
+            // 組合成純文字
+            let textToCopy = "【宙斯08 頭目時刻表】\n";
+            copyArray.forEach(item => {
+                textToCopy += `${item.name} ${item.timeText}\n`;
+            });
+
+            // 寫入剪貼簿
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    alert("✅ 時刻表已複製！可以貼到 LINE 或 Discord 囉！\n\n預覽內容：\n" + textToCopy);
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(textToCopy);
+                });
+            } else {
+                fallbackCopyTextToClipboard(textToCopy);
+            }
+        };
+
+        // 剪貼簿備用方案 (支援舊版瀏覽器)
+        function fallbackCopyTextToClipboard(text, successCallback) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            try {
+                document.execCommand('copy');
+                if(successCallback) successCallback();
+                else alert("✅ 時刻表已複製！可以貼到 LINE 或 Discord 囉！\n\n預覽內容：\n" + text);
+            } catch (err) {
+                if(!successCallback) alert("❌ 複製失敗，請手動選取文字複製。");
+            }
+            document.body.removeChild(textArea);
+        }
+
         // ================= UI 操作 =================
         function checkNotificationStatus() {
             if ("Notification" in window && Notification.permission === "granted") {
@@ -386,6 +583,7 @@
                 let modeTagHtml = '';
                 let controlHtml = '';
 
+                // 🌟 新增右上方的一鍵複製單王按鈕區塊
                 if (config.type === 'interval') {
                     const displayVal = isFastMode ? config.value / 2 : config.value;
                     const tagClass = isFastMode ? "boss-tag fast-mode-text" : "boss-tag";
@@ -393,7 +591,10 @@
                     
                     const savedTime = bossData[name] || '';
                     controlHtml = `
-                        <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
+                        <div style="display:flex; gap:5px; margin-bottom: 2px;">
+                            <button class="copy-single-btn" onclick="copySingleBoss('${name}', this)" title="複製此王">📋 複製</button>
+                            <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
+                        </div>
                         <div class="control-row">
                             <input type="text" class="time-input" id="input-${name}" value="${savedTime}" placeholder="1647" maxlength="5" oninput="formatTimeInput(this)" onkeypress="handleEnter(event, '${name}')" onfocus="this.select()">
                             <button class="save-btn" onclick="saveTime('${name}')">記錄</button>
@@ -402,11 +603,21 @@
                     `;
                 } else if (config.type === 'daily') {
                     modeTagHtml = `<span class="boss-tag fixed-daily">每日 ${config.time}</span>`;
-                    controlHtml = `<button class="delete-btn" style="border:none;" onclick="deleteBoss('${name}')">✖ 刪除</button>`;
+                    controlHtml = `
+                        <div style="display:flex; gap:5px;">
+                            <button class="copy-single-btn" onclick="copySingleBoss('${name}', this)" title="複製此王">📋 複製</button>
+                            <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
+                        </div>
+                    `;
                 } else if (config.type === 'weekly') {
                     const days = ["週日","週一","週二","週三","週四","週五","週六"];
                     modeTagHtml = `<span class="boss-tag fixed-weekly">${days[config.day]} ${config.time}</span>`;
-                    controlHtml = `<button class="delete-btn" style="border:none;" onclick="deleteBoss('${name}')">✖ 刪除</button>`;
+                    controlHtml = `
+                        <div style="display:flex; gap:5px;">
+                            <button class="copy-single-btn" onclick="copySingleBoss('${name}', this)" title="複製此王">📋 複製</button>
+                            <button class="delete-btn" onclick="deleteBoss('${name}')" title="刪除此王">✖</button>
+                        </div>
+                    `;
                 }
 
                 card.innerHTML = `
@@ -544,7 +755,6 @@
             return targetDate;
         }
 
-        // 🌟 核心排版與時間邏輯 (加入超時 30 分自動推算)
         function updateAndSort() {
             const now = new Date();
             const [nowH, nowM, nowS] = [now.getHours(), now.getMinutes(), now.getSeconds()].map(v => String(v).padStart(2, '0'));
@@ -595,7 +805,6 @@
                     const spTimeStr = `${String(nextSpawnDate.getHours()).padStart(2, '0')}:${String(nextSpawnDate.getMinutes()).padStart(2, '0')}`;
 
                     if (diffMs > 0) {
-                        // ==== 還沒出王，正在倒數中 ====
                         const diffMinutes = diffMs / 1000 / 60;
                         
                         if (diffMinutes <= 10) {
@@ -619,18 +828,15 @@
                             notifiedSpawns[spawnId] = true;
                         }
                     } else {
-                        // ==== 時間已經過了 (已出現) ====
                         card.className = `boss-card type-${config.type} passed`;
                         const passedMinutes = Math.floor(Math.abs(diffMs) / 1000 / 60);
                         
-                        // 🌟 30分鐘內顯示經過時間，超過30分鐘直接推算下一輪
                         if (passedMinutes <= 30) {
                             statusEl.innerText = `⚠️ 已出現 (經過 ${passedMinutes} 分鐘)`;
                         } else {
                             if (config.type === 'interval') {
                                 const actualInterval = isFastMode ? (config.value / 2) : config.value;
                                 let nextPossible = new Date(nextSpawnDate.getTime());
-                                // 一直加上間隔時間，直到找出大於現在的時間為止
                                 while (nextPossible <= now) {
                                     nextPossible.setTime(nextPossible.getTime() + actualInterval * 60 * 60 * 1000);
                                 }
@@ -643,7 +849,7 @@
                         }
 
                         statusEl.style.color = '#ff6b6b';
-                        orderWeight = 100000000 + Math.abs(diffMs); // 讓它乖乖沉在底下
+                        orderWeight = 100000000 + Math.abs(diffMs); 
                     }
 
                     sortArray.push({ name, weight: orderWeight });
