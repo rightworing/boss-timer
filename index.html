@@ -194,6 +194,7 @@
 
         <h3>🛠️ 進階操作技巧</h3>
         <ul>
+            <li><strong>自動防斷線：</strong> 只要網頁開著，每 15 分鐘系統會自動重新整理一次，確保連線永遠不斷、記憶體不卡死！</li>
             <li><strong>一鍵複製：</strong> 點擊上方可複製全團時刻表（自動排除每週王），或點擊單張卡片右上角的「📋 複製」，將時間貼到群組！</li>
             <li><strong>快速輸入：</strong> 點擊時間輸入框時會「自動全選」，直接輸入數字 (例如 <code>1647</code>) 即可快速覆蓋。</li>
             <li><strong>手機通知：</strong> 蘋果 (iOS) 用戶請務必將網頁<strong>「加入主畫面」</strong>，從桌面打開才能收到橫幅通知喔！</li>
@@ -330,7 +331,7 @@
             reader.readAsText(file);
         };
 
-        // ================= 🌟 核心：精準推算單隻王複製時間 =================
+        // ================= 🌟 單一複製 =================
         window.copySingleBoss = function(name, btnElement) {
             const config = bossConfig[name];
             if (!config) return;
@@ -351,7 +352,6 @@
                     let theoreticalSpawn = new Date(nextSpawnDate.getTime());
                     let isProjected = false;
 
-                    // 一直把時間往後加，直到「與現在時間的差距不超過 30 分鐘」
                     while (now.getTime() - theoreticalSpawn.getTime() > 30 * 60 * 1000) {
                         theoreticalSpawn.setTime(theoreticalSpawn.getTime() + (actualInterval * 60 * 60 * 1000));
                         isProjected = true;
@@ -393,14 +393,14 @@
             doCopy(textToCopy);
         };
 
-        // ================= 🌟 核心：精準推算全團複製 =================
+        // ================= 🌟 全團複製 =================
         window.copyBossTimes = function() {
             const now = new Date();
             let copyArray = [];
 
             Object.keys(bossConfig).forEach(name => {
                 const config = bossConfig[name];
-                if (config.type === 'weekly') return; // 略過每週王
+                if (config.type === 'weekly') return; 
 
                 let timeText = "";
                 let orderWeight = 0;
@@ -678,7 +678,7 @@
             return targetDate;
         }
 
-        // ================= 🌟 核心：精準推算與畫面排版渲染 =================
+        // ================= 🌟 畫面排版渲染 =================
         function updateAndSort() {
             const now = new Date();
             const [nowH, nowM, nowS] = [now.getHours(), now.getMinutes(), now.getSeconds()].map(v => String(v).padStart(2, '0'));
@@ -715,7 +715,6 @@
                         let theoreticalSpawn = new Date(nextSpawnDate.getTime());
                         let isProjected = false;
 
-                        // 核心防呆：只要時間差距「小於等於 30 分鐘 (包含未來)」，就停止推算
                         while (now.getTime() - theoreticalSpawn.getTime() > 30 * 60 * 1000) {
                             theoreticalSpawn.setTime(theoreticalSpawn.getTime() + (actualInterval * 60 * 60 * 1000));
                             isProjected = true;
@@ -726,7 +725,6 @@
                         const spM = String(theoreticalSpawn.getMinutes()).padStart(2, '0');
 
                         if (diffMs > 0) {
-                            // ==== 倒數中 (未來) ====
                             const diffMinutes = diffMs / 1000 / 60;
                             if (isProjected) {
                                 displayEl.innerHTML = `推算 ➔ <strong style="color:#ff9933;">約 ${spH}:${spM}</strong>`;
@@ -749,7 +747,6 @@
                                 notifiedSpawns[spawnId] = true;
                             }
                         } else {
-                            // ==== 已出現 (剛過 30 分鐘內) ====
                             card.className += ` passed`;
                             const passedMins = Math.floor(Math.abs(diffMs) / 1000 / 60);
                             if (isProjected) {
@@ -764,7 +761,6 @@
                         }
 
                     } else {
-                        // 固定王邏輯
                         let nextSpawnDate = getNextFixedTime(now, config.type, config.time, config.day);
                         const spH = String(nextSpawnDate.getHours()).padStart(2, '0');
                         const spM = String(nextSpawnDate.getMinutes()).padStart(2, '0');
@@ -805,6 +801,12 @@
         }
 
         setInterval(updateAndSort, 1000);
+
+        // 🌟 新增：每 15 分鐘 (900,000 毫秒) 自動重新整理網頁，防斷線
+        setTimeout(() => {
+            console.log("執行 15 分鐘定時重整...");
+            location.reload();
+        }, 900000);
 
     </script>
 </body>
