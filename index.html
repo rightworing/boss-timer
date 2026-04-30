@@ -26,10 +26,45 @@
         .notify-input { width: 40px; color: #d4af37; font-weight: bold; }
         .add-input { width: 85px; } .add-input.short { width: 60px; }
 
+        /* 區域過濾器 UI */
+        .area-filters { display: flex; gap: 8px; align-items: center; background-color: #2c2c2c; padding: 4px 12px; border-radius: 6px; border: 1px solid #555; flex-wrap: wrap; }
+        .area-filters label { color: #fff; font-size: 0.9em; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        
+        /* 區域標籤 */
+        .area-tag { font-size: 0.7em; padding: 2px 5px; border-radius: 3px; margin-right: 5px; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); }
+        .area-local { background-color: #2d5a27; color: #d4edda; }
+        .area-world { background-color: #1a4b8c; color: #cce5ff; }
+        .area-arena { background-color: #8b0000; color: #f8d7da; }
+
         .add-boss-group, .top-btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .add-boss-group { width: 100%; }
+        
+        .day-checkboxes { display: flex; gap: 6px; align-items: center; background-color: #2c2c2c; padding: 4px 8px; border-radius: 4px; border: 1px solid #555; }
+        .day-checkboxes label { color: #ccc; font-size: 0.85em; display: flex; align-items: center; cursor: pointer; gap: 2px; }
+        .day-checkboxes input[type="checkbox"] { margin: 0; cursor: pointer; }
 
         .boss-container { width: 100%; max-width: 1200px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; align-items: start; }
+
+        /* 新增：主佈局與左右側欄 */
+        .main-layout { display: flex; gap: 20px; width: 100%; max-width: 1800px; justify-content: center; align-items: flex-start; }
+        .center-content { flex: 1; max-width: 1200px; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        
+        .side-panel {
+            display: none; width: 280px; flex-shrink: 0; background-color: #1a1a1a; 
+            border: 1px solid #333; border-radius: 8px; padding: 15px; box-sizing: border-box; 
+            position: sticky; top: 15px; height: calc(100vh - 30px); overflow-y: auto;
+        }
+        .side-panel::-webkit-scrollbar { width: 6px; }
+        .side-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+        
+        .side-panel h3 { color: #d4af37; font-size: 1.1em; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px; text-align: center; }
+        
+        #clanNotepad { width: 100%; height: calc(100% - 40px); background: #242424; color: #ccc; border: 1px solid #444; border-radius: 6px; padding: 10px; resize: none; box-sizing: border-box; font-family: inherit; line-height: 1.5; }
+        #clanNotepad:focus { outline: 1px solid #d4af37; }
+        
+        .timeline-item { background: #262626; border-left: 4px solid #555; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; font-size: 0.9em; }
+        .timeline-item .t-name { font-weight: bold; color: #fff; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .timeline-item .t-time { color: #ccc; }
 
         .boss-card {
             background-color: #1e1e1e; border: 2px solid #333; border-left-width: 8px;
@@ -124,6 +159,10 @@
             50%  { box-shadow: 0 0 40px rgba(255,0,0,1),   inset 0 0 15px rgba(255,0,0,0.6); }
             100% { box-shadow: 0 0 25px rgba(255,0,0,0.8), inset 0 0 10px rgba(255,0,0,0.3); }
         }
+
+        /* 當螢幕大於 1300px 顯示右側欄，大於 1600px 顯示左右雙側欄 */
+        @media (min-width: 1300px) { .right-panel { display: block; } }
+        @media (min-width: 1600px) { .left-panel { display: block; } }
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -135,71 +174,109 @@
 <div id="syncStatus">🔴 尚未連線至雲端資料庫 (單機模式)</div>
 <div id="currentTime">現在時間: 載入中...</div>
 
-<div class="panel-container">
-    <div class="settings-panel">
-        <div class="top-btn-group">
-            <button class="copy-btn" onclick="copyBossTimes()">📋 複製全團時刻表</button>
-            <button class="backup-btn" onclick="exportData()">💾 匯出備份</button>
-            <button class="import-btn" onclick="document.getElementById('importFile').click()">📂 匯入還原</button>
-            <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
-            <button id="notifyAuthBtn" class="notify-btn" onclick="requestNotificationPermission()">🔔 授權通知</button>
-            <button id="soundToggleBtn" class="sound-on-btn" onclick="toggleSound()">🔊 音效: 開</button>
-            <span style="font-size:0.9em; margin-left:5px;">提前 <input type="number" id="notifyMin" class="notify-input" value="5" min="1" max="60" onchange="saveNotifySetting()"> 分提醒</span>
-        </div>
-        <button id="speedToggleBtn" class="normal" onclick="toggleSpeedMode()">⏳ 正常間隔模式</button>
+<div class="main-layout">
+    <!-- 左側欄：共用戰術便條紙 -->
+    <div class="side-panel left-panel">
+        <h3>📝 團隊共用戰術板</h3>
+        <textarea id="clanNotepad" placeholder="在此輸入的內容會即時同步給全團所有人！&#10;可記錄：&#10;- 分寶名單&#10;- 敵對動向&#10;- 備忘錄..."></textarea>
     </div>
 
-    <div class="settings-panel" style="justify-content: flex-start;">
-        <div class="add-boss-group">
-            <span style="font-size:0.9em; color:#ccc;">➕ 新增:</span>
-            <input type="text" id="newBossName" class="add-input" placeholder="名稱">
-            <select id="newBossType" class="add-input" style="width:95px;" onchange="changeAddUI()">
-                <option value="interval">間隔倒數</option>
-                <option value="daily">每天固定</option>
-                <option value="weekly">每週固定</option>
-            </select>
-            <span id="ui-interval"><input type="number" id="newBossInterval" class="add-input short" placeholder="小時"></span>
-            <span id="ui-daily" style="display:none;"><input type="text" id="newBossDailyTime" class="add-input short" placeholder="20:00" maxlength="5" oninput="formatTimeInput(this)"></span>
-            <span id="ui-weekly" style="display:none;">
-                <select id="newBossWeeklyDay" class="add-input short" style="width:65px;">
-                    <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
-                    <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="0">週日</option>
-                </select>
-                <input type="text" id="newBossWeeklyTime" class="add-input short" placeholder="20:00" maxlength="5" oninput="formatTimeInput(this)">
-            </span>
-            <button class="save-btn" onclick="addNewBoss()">加入雲端</button>
+    <!-- 原本的置中內容區塊 -->
+    <div class="center-content">
+        <div class="panel-container">
+            <div class="settings-panel">
+                <div class="top-btn-group">
+                    <button class="copy-btn" onclick="copyBossTimes()">📋 複製全團時刻表</button>
+                    <button class="backup-btn" onclick="exportData()">💾 匯出備份</button>
+                    <button class="import-btn" onclick="document.getElementById('importFile').click()">📂 匯入還原</button>
+                    <button class="import-btn" style="background-color: #8b4513; border-color: #a0522d;" onclick="resetDefaultBosses()">🔄 重置預設表</button>
+                    <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+                    <button id="notifyAuthBtn" class="notify-btn" onclick="requestNotificationPermission()">🔔 授權通知</button>
+                    <button id="soundToggleBtn" class="sound-on-btn" onclick="toggleSound()">🔊 音效: 開</button>
+                    <span style="font-size:0.9em; margin-left:5px;">提前 <input type="number" id="notifyMin" class="notify-input" value="5" min="1" max="60" onchange="saveNotifySetting()"> 分提醒</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div class="area-filters">
+                        <span style="font-size:0.85em; color:#ccc;">👁️ 顯示區域:</span>
+                        <label><input type="checkbox" id="cb-local" checked onchange="updateFilters()">🏠服內</label>
+                        <label><input type="checkbox" id="cb-world" checked onchange="updateFilters()">🌍世界</label>
+                        <label><input type="checkbox" id="cb-arena" checked onchange="updateFilters()">⚔️競技</label>
+                    </div>
+                    <button id="speedToggleBtn" class="normal" onclick="toggleSpeedMode()">⏳ 正常間隔模式</button>
+                </div>
+            </div>
+        
+            <div class="settings-panel" style="justify-content: flex-start;">
+                <div class="add-boss-group">
+                    <span style="font-size:0.9em; color:#ccc;">➕ 新增:</span>
+                    <input type="text" id="newBossName" class="add-input" placeholder="名稱">
+                    <select id="newBossArea" class="add-input" style="width:70px;">
+                        <option value="local">服內</option>
+                        <option value="world">世界</option>
+                        <option value="arena">競技</option>
+                    </select>
+                    <select id="newBossType" class="add-input" style="width:95px;" onchange="changeAddUI()">
+                        <option value="interval">間隔倒數</option>
+                        <option value="daily">每天固定</option>
+                        <option value="weekly">每週固定</option>
+                    </select>
+                    <span id="ui-interval"><input type="number" id="newBossInterval" class="add-input short" placeholder="小時"></span>
+                    <span id="ui-weekly-days" class="day-checkboxes" style="display:none;">
+                        <label><input type="checkbox" value="1" class="day-cb">一</label>
+                        <label><input type="checkbox" value="2" class="day-cb">二</label>
+                        <label><input type="checkbox" value="3" class="day-cb">三</label>
+                        <label><input type="checkbox" value="4" class="day-cb">四</label>
+                        <label><input type="checkbox" value="5" class="day-cb">五</label>
+                        <label><input type="checkbox" value="6" class="day-cb">六</label>
+                        <label><input type="checkbox" value="0" class="day-cb">日</label>
+                    </span>
+                    <span id="ui-fixed-times" style="display:none;">
+                        <input type="text" id="newBossFixedTimes" class="add-input" style="width:140px;" 
+                            placeholder="如: 0300, 1200" title="可使用逗號或空白分隔多個時間" oninput="this.value = this.value.replace(/[^0-9:,，\s]/g, '')">
+                    </span>
+                    <button class="save-btn" onclick="addNewBoss()">加入雲端</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="boss-container" id="bossContainer"></div>
+        
+        <div class="instructions-panel">
+            <h2>📖 系統使用說明與顏色指南</h2>
+        
+            <h3>🎨 卡片狀態與顏色</h3>
+            <ul>
+                <li><span class="color-box" style="background:#ffcc00;"></span><strong>黃色警戒：</strong>倒數 30 分鐘內，卡片會發出黃光閃爍。</li>
+                <li><span class="color-box" style="background:#ff1a1a;"></span><strong>紅色警戒：</strong>倒數 10 分鐘內，卡片會發出強烈紅光閃爍，準備出王！</li>
+                <li><span class="color-box" style="border:2px dashed #ff9933; background:#261a0d;"></span><strong>橙色虛線 (推算)：</strong>出現超過 30 分鐘後自動推算下一次，最多推算 24 小時，僅供參考。</li>
+                <li><span class="color-box" style="background:#1a1a1a; border:1px solid #555;"></span><strong>灰色沉底 (未登記 / 已過期)：</strong>從未登記，或最後登記超過 24 小時（顯示最後記錄時間）。</li>
+            </ul>
+        
+            <h3>🏷️ 頭目種類標籤</h3>
+            <ul>
+                <li><span class="color-box" style="border-left:4px solid #d4af37;"></span><strong>金色邊框 (間隔王)：</strong>依據擊殺時間往後推算。</li>
+                <li><span class="color-box" style="border-left:4px solid #4da6ff;"></span><strong>藍色邊框 (每日王)：</strong>每天固定時間出沒。</li>
+                <li><span class="color-box" style="border-left:4px solid #b266ff;"></span><strong>紫色邊框 (每週王)：</strong>每週固定日期時間出沒。</li>
+            </ul>
+        
+            <h3>🛠️ 進階操作技巧</h3>
+            <ul>
+                <li><strong>推算時效：</strong>出現超過 30 分鐘後進入推算倒數，推算最多 24 小時，超過即顯示「已過期」並附上最後記錄時間。</li>
+                <li><strong>一鍵複製：</strong>點擊上方複製全團時刻表（自動排除每週王），或點擊單張卡片「📋 複製」貼到群組！</li>
+                <li><strong>快速輸入：</strong>點擊輸入框自動全選，輸入 <code>1647</code> 即可，日期由系統自動記錄，無需手動輸入。</li>
+                <li><strong>防斷線保護：</strong>系統每 15 分鐘會在背景自動刷新一次，確保長時間掛機也不會斷開連線。</li>
+                <li><strong>手機通知：</strong>iOS 用戶請將網頁<strong>「加入主畫面」</strong>，從桌面開啟才能收到橫幅通知。</li>
+            </ul>
         </div>
     </div>
-</div>
 
-<div class="boss-container" id="bossContainer"></div>
-
-<div class="instructions-panel">
-    <h2>📖 系統使用說明與顏色指南</h2>
-
-    <h3>🎨 卡片狀態與顏色</h3>
-    <ul>
-        <li><span class="color-box" style="background:#ffcc00;"></span><strong>黃色警戒：</strong>倒數 30 分鐘內，卡片會發出黃光閃爍。</li>
-        <li><span class="color-box" style="background:#ff1a1a;"></span><strong>紅色警戒：</strong>倒數 10 分鐘內，卡片會發出強烈紅光閃爍，準備出王！</li>
-        <li><span class="color-box" style="border:2px dashed #ff9933; background:#261a0d;"></span><strong>橙色虛線 (推算)：</strong>出現超過 30 分鐘後自動推算下一次，最多推算 24 小時，僅供參考。</li>
-        <li><span class="color-box" style="background:#1a1a1a; border:1px solid #555;"></span><strong>灰色沉底 (未登記 / 已過期)：</strong>從未登記，或最後登記超過 24 小時（顯示最後記錄時間）。</li>
-    </ul>
-
-    <h3>🏷️ 頭目種類標籤</h3>
-    <ul>
-        <li><span class="color-box" style="border-left:4px solid #d4af37;"></span><strong>金色邊框 (間隔王)：</strong>依據擊殺時間往後推算。</li>
-        <li><span class="color-box" style="border-left:4px solid #4da6ff;"></span><strong>藍色邊框 (每日王)：</strong>每天固定時間出沒。</li>
-        <li><span class="color-box" style="border-left:4px solid #b266ff;"></span><strong>紫色邊框 (每週王)：</strong>每週固定日期時間出沒。</li>
-    </ul>
-
-    <h3>🛠️ 進階操作技巧</h3>
-    <ul>
-        <li><strong>推算時效：</strong>出現超過 30 分鐘後進入推算倒數，推算最多 24 小時，超過即顯示「已過期」並附上最後記錄時間。</li>
-        <li><strong>一鍵複製：</strong>點擊上方複製全團時刻表（自動排除每週王），或點擊單張卡片「📋 複製」貼到群組！</li>
-        <li><strong>快速輸入：</strong>點擊輸入框自動全選，輸入 <code>1647</code> 即可，日期由系統自動記錄，無需手動輸入。</li>
-        <li><strong>防斷線保護：</strong>系統每 15 分鐘會在背景自動刷新一次，確保長時間掛機也不會斷開連線。</li>
-        <li><strong>手機通知：</strong>iOS 用戶請將網頁<strong>「加入主畫面」</strong>，從桌面開啟才能收到橫幅通知。</li>
-    </ul>
+    <!-- 右側欄：時間軸 -->
+    <div class="side-panel right-panel">
+        <h3>🔥 即將重生清單</h3>
+        <div id="timelineContainer">
+            <div style="color:#888; text-align:center; font-size:0.9em; margin-top:20px;">資料計算中...</div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -221,17 +298,75 @@ let db;
 let isFirebaseActive = false;
 
 const defaultBossConfig = {
-    "史前巨鱷": { type: 'interval', value: 4  },
-    "大腳":     { type: 'interval', value: 4  },
-    "巨人":     { type: 'interval', value: 12 },
-    "拉馬修":   { type: 'interval', value: 8  },
-    "哈格馬":   { type: 'interval', value: 8  },
-    "庫爾托":   { type: 'interval', value: 8  }
+    "史前巨鱷": { type: 'interval', value: 4, area: 'local' },
+    "大腳":     { type: 'interval', value: 4, area: 'local' },
+    "巨人":     { type: 'interval', value: 12, area: 'local' },
+    "拉馬修":   { type: 'interval', value: 8, area: 'local' },
+    "哈格馬":   { type: 'interval', value: 8, area: 'local' },
+    "庫爾托":   { type: 'interval', value: 8, area: 'local' },
+    // === 每日固定王 (Daily Bosses) ===
+    "夢幻樂園(12點)": { type: 'daily', time: '12:00', area: 'world' },
+    "克特": { type: 'daily', time: '18:10', area: 'local' },
+    "傲1": { type: 'daily', time: '18:10', area: 'world' },
+    "傲2": { type: 'daily', time: '18:10', area: 'world' },
+    "蜘蛛": { type: 'daily', time: '18:15', area: 'local' },
+    "傲3": { type: 'daily', time: '18:15', area: 'world' },
+    "傲4": { type: 'daily', time: '18:15', area: 'world' },
+    "傲5": { type: 'daily', time: '18:20', area: 'world' },
+    "傲6": { type: 'daily', time: '18:20', area: 'world' },
+    "團長": { type: 'daily', time: '18:20', area: 'world' },
+    "巫師": { type: 'daily', time: '19:10', area: 'local' },
+    "變怪王": { type: 'daily', time: '19:10', area: 'local' },
+    "傲7": { type: 'daily', time: '19:15', area: 'world' },
+    "傲8": { type: 'daily', time: '19:15', area: 'world' },
+    "傲9": { type: 'daily', time: '19:15', area: 'world' },
+    "古丁死亡騎士": { type: 'daily', time: '19:20', area: 'local' },
+    "萊奧斯": { type: 'daily', time: '19:20', area: 'local' },
+    "傲10": { type: 'daily', time: '19:20', area: 'world' },
+
+    // === 每週固定王 (Weekly Bosses) ===
+    "夢幻樂園(23點)": { type: 'weekly', days: [0, 1, 2, 3, 4, 5], time: '23:00', area: 'world' },
+    "遺忘飛龍王": { type: 'weekly', days: [4, 5], time: ['07:10', '15:10', '23:10'], area: 'world' },
+    "象塔火焰5樓": { type: 'weekly', days: [1, 3], time: '15:00', area: 'local' },
+    "巨蟻女皇": { type: 'weekly', days: [1, 2, 3, 4, 5], time: '15:00', area: 'local' },
+    "象塔炎魔5樓": { type: 'weekly', days: [2, 4], time: '15:00', area: 'local' },
+    "象塔8樓": { type: 'weekly', days: [5], time: '15:00', area: 'local' },
+    "冰之女皇幻影": { type: 'weekly', days: [0, 1, 3, 4, 5, 6], time: '17:00', area: 'world' },
+    "黃昏山脈巨人": { type: 'weekly', days: [5, 6], time: '18:00', area: 'arena' },
+    "不死鳥": { type: 'weekly', days: [1, 3], time: '18:20', area: 'world' },
+    "塔坤": { type: 'weekly', days: [0, 2, 4, 5, 6], time: '18:20', area: 'world' },
+    "大花草": { type: 'weekly', days: [5], time: '19:00', area: 'local' },
+    "鑽石高倫": { type: 'weekly', days: [1], time: '19:20', area: 'local' },
+    "船長卡利索": { type: 'weekly', days: [2], time: '19:20', area: 'local' },
+    "巨大飛龍": { type: 'weekly', days: [3], time: '19:20', area: 'local' },
+    "伊娃巨大蜈蚣": { type: 'weekly', days: [4], time: '19:20', area: 'local' },
+    "龍間大黑長者": { type: 'weekly', days: [5], time: '19:20', area: 'local' },
+    "夏斯奇": { type: 'weekly', days: [6], time: '19:20', area: 'local' },
+    "古丁6漆黑死騎": { type: 'weekly', days: [0], time: '19:20', area: 'local' },
+    "魔族頂樓": { type: 'weekly', days: [1, 2], time: '20:00', area: 'world' },
+    "冰之女皇": { type: 'weekly', days: [2], time: '20:00', area: 'world' },
+    "狂神夜": { type: 'weekly', days: [3], time: '20:00', area: 'arena' },
+    "霧華": { type: 'weekly', days: [3], time: '20:00', area: 'arena' },
+    "空虛木偶": { type: 'weekly', days: [4], time: '20:00', area: 'local' },
+    "哈汀": { type: 'weekly', days: [4], time: '20:00', area: 'local' },
+    "安塔瑞斯": { type: 'weekly', days: [4], time: '20:00', area: 'arena' },
+    "深淵奈洛菈特莫爾": { type: 'weekly', days: [4], time: '21:00', area: 'arena' },
+    "水龍窟": { type: 'weekly', days: [5], time: '20:00', area: 'arena' },
+    "頂樓死神": { type: 'weekly', days: [6], time: '20:00', area: 'arena' },
+    "支配塔一階": { type: 'weekly', days: [6], time: '20:00', area: 'arena' },
+    "神界王": { type: 'weekly', days: [6], time: '21:00', area: 'arena' },
+    "支配塔二階": { type: 'weekly', days: [6], time: '21:00', area: 'arena' },
+    "遺忘牛雞": { type: 'weekly', days: [3], time: '21:10', area: 'world' },
+    "遺忘石頭巨人": { type: 'weekly', days: [5], time: '21:10', area: 'world' },
+    "拉動中央四王": { type: 'weekly', days: [1, 2], time: '21:30', area: 'arena' },
+    "滅亡之城拉克沙爾": { type: 'weekly', days: [3], time: '21:30', area: 'arena' },
+    "風龍窟迪亞勒": { type: 'weekly', days: [0], time: '21:30', area: 'arena' },
+    "底比斯": { type: 'weekly', days: [4], time: '22:00', area: 'world' },
+    "提卡爾": { type: 'weekly', days: [5], time: '22:00', area: 'world' },
+    "席琳": { type: 'weekly', days: [6], time: '23:00', area: 'arena' },
 };
-const defaultRecords = {
-    "史前巨鱷": null, "大腳": null, "巨人": null,
-    "拉馬修": null, "哈格馬": null, "庫爾托": null
-};
+const defaultRecords = {};
+Object.keys(defaultBossConfig).forEach(k => defaultRecords[k] = null); // 自動產生對應的空紀錄
 
 let bossConfig = JSON.parse(JSON.stringify(defaultBossConfig));
 let bossData   = JSON.parse(JSON.stringify(defaultRecords));
@@ -241,12 +376,20 @@ let isFastMode     = false;
 let isSoundEnabled = true;
 let notifiedSpawns = {};
 let audioCtx       = null;
+let areaFilters    = { local: true, world: true, arena: true };
 
 try {
     const savedNotify = localStorage.getItem('bossNotifyMin');
     if (savedNotify) notifyMinutes = parseInt(savedNotify);
     const savedSound = localStorage.getItem('bossSoundEnabled');
     if (savedSound !== null) isSoundEnabled = savedSound === 'true';
+    const savedFilters = localStorage.getItem('bossAreaFilters');
+    if (savedFilters) {
+        areaFilters = JSON.parse(savedFilters);
+        document.getElementById('cb-local').checked = areaFilters.local;
+        document.getElementById('cb-world').checked = areaFilters.world;
+        document.getElementById('cb-arena').checked = areaFilters.arena;
+    }
 } catch(e) {}
 
 document.getElementById('notifyMin').value = notifyMinutes;
@@ -280,8 +423,12 @@ if (firebaseConfig.apiKey) {
 
         db.ref('bossConfig').on('value', snap => {
             const data = snap.val();
-            bossConfig = data || defaultBossConfig;
-            if (!data) db.ref('bossConfig').set(defaultBossConfig);
+            if (data) {
+                bossConfig = data;
+            } else {
+                bossConfig = defaultBossConfig;
+                db.ref('bossConfig').set(defaultBossConfig);
+            }
             statusEl.innerText = "🟢 已連線：全團資料同步中";
             renderBossCards();
         });
@@ -296,6 +443,14 @@ if (firebaseConfig.apiKey) {
                 bossData = defaultRecords;
             }
             renderBossCards();
+        });
+
+        // 監聽並同步共用便條紙
+        db.ref('settings/notepad').on('value', snap => {
+            const notepad = document.getElementById('clanNotepad');
+            if (document.activeElement !== notepad) {
+                notepad.value = snap.val() || '';
+            }
         });
 
     } catch(e) {
@@ -332,6 +487,51 @@ window.importData = function(event) {
         } catch(err) { alert("❌ 讀取檔案失敗！"); }
     };
     reader.readAsText(file);
+};
+
+window.resetDefaultBosses = function() {
+    if (!isFirebaseActive) return alert("請等待雲端連線完成！");
+    if (confirm("這將會把所有預設的「每日/每週固定王」覆蓋為最新修正版，不會影響您手動新增的王。\n確定要重置嗎？")) {
+        let currentConfig = { ...bossConfig };
+        
+        // 清理舊版已更名的預設王，避免畫面上出現重複
+        [
+            "夢幻樂園", // 舊的單一夢幻樂園
+            "夢幻樂園(23點)", // 舊的夢幻樂園(23點)如果名稱有變
+            "克特(傲1.2)", // 舊的合併名稱
+            "蜘蛛(傲3.4)", // 舊的合併名稱
+            "巫師/變怪王", // 舊的合併名稱
+            "傲7.8.9", // 舊的合併名稱
+            "萊奧斯/傲10", // 舊的合併名稱
+            "巨蟻(火5)", // 舊的合併名稱
+            "巨蟻(炎5)", // 舊的合併名稱
+            "巨蟻(象塔8)", // 舊的合併名稱
+            "不死鳥/團長", // 舊的合併名稱
+            "塔坤/團長", // 舊的合併名稱
+            "狂神夜/霧華", "空虛木偶/哈汀", "頂樓死神/支配1", "神界王/支配2" // 舊的合併名稱
+        ].forEach(k => {
+            if (currentConfig[k]) {
+                delete currentConfig[k];
+                db.ref('bossConfig/' + k).remove();
+                db.ref('bossData/' + k).remove();
+            }
+        });
+        
+        Object.keys(defaultBossConfig).forEach(k => {
+            currentConfig[k] = defaultBossConfig[k];
+        });
+        db.ref('bossConfig').set(currentConfig);
+        alert("✅ 已更新為最新時刻表！");
+    }
+};
+
+// ===================== 區域過濾 =====================
+window.updateFilters = function() {
+    areaFilters.local = document.getElementById('cb-local').checked;
+    areaFilters.world = document.getElementById('cb-world').checked;
+    areaFilters.arena = document.getElementById('cb-arena').checked;
+    try { localStorage.setItem('bossAreaFilters', JSON.stringify(areaFilters)); } catch(e) {}
+    updateAndSort(); // 立即重新排序隱藏
 };
 
 // ===================== 時間解析工具 =====================
@@ -397,6 +597,22 @@ function getDisplayDateTime(record) {
         return `${parseInt(mm)}/${parseInt(dd)} ${timePart}`;
     }
     return record;
+}
+
+/** 解析使用者輸入的多個時間，支援逗號或空白分隔，且自動補齊格式 */
+function parseMultiTimeInput(raw) {
+    if (!raw) return [];
+    let parts = raw.split(/[,，\s]+/).filter(p => p.trim() !== '');
+    let results = [];
+    for (let t of parts) {
+        t = t.replace(/[^0-9:]/g, '');
+        if (t.length === 4 && !t.includes(':')) t = t.slice(0,2) + ':' + t.slice(2,4);
+        else if (t.length === 3 && !t.includes(':')) t = '0' + t.slice(0,1) + ':' + t.slice(1,3);
+        else if (t.length <= 2 && !t.includes(':')) t = t.padStart(2, '0') + ':00'; // 輸入 "3" 變成 "03:00"
+        if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t)) return null; // 格式不正確
+        results.push(t);
+    }
+    return [...new Set(results)].sort(); // 去重並排序
 }
 
 // ===================== 核心：計算間隔王目前狀態 =====================
@@ -475,7 +691,7 @@ window.copySingleBoss = function(name, btnEl) {
             }
         }
     } else {
-        const nextSpawn = getNextFixedTime(now, config.type, config.time, config.day);
+        const nextSpawn = getNextFixedTime(now, config.type, config.time, config.days !== undefined ? config.days : config.day);
         const diffMs = nextSpawn - now;
         const h = String(nextSpawn.getHours()).padStart(2,'0');
         const m = String(nextSpawn.getMinutes()).padStart(2,'0');
@@ -535,7 +751,7 @@ window.copyBossTimes = function() {
                 }
             }
         } else {
-            const nextSpawn = getNextFixedTime(now, config.type, config.time, config.day);
+            const nextSpawn = getNextFixedTime(now, config.type, config.time, config.days !== undefined ? config.days : config.day);
             const diffMs = nextSpawn - now;
             const h = String(nextSpawn.getHours()).padStart(2,'0');
             const m = String(nextSpawn.getMinutes()).padStart(2,'0');
@@ -577,8 +793,8 @@ function checkNotificationStatus() {
 window.changeAddUI = function() {
     const type = document.getElementById('newBossType').value;
     document.getElementById('ui-interval').style.display = type === 'interval' ? 'inline-block' : 'none';
-    document.getElementById('ui-daily').style.display    = type === 'daily'    ? 'inline-block' : 'none';
-    document.getElementById('ui-weekly').style.display   = type === 'weekly'   ? 'inline-block' : 'none';
+    document.getElementById('ui-weekly-days').style.display = type === 'weekly' ? 'flex' : 'none';
+    document.getElementById('ui-fixed-times').style.display = (type === 'daily' || type === 'weekly') ? 'inline-block' : 'none';
 };
 
 window.formatTimeInput   = function(input) { input.value = input.value.replace(/[^0-9:]/g, ''); };
@@ -600,6 +816,18 @@ function updateSoundBtnUI() {
     else                { btn.className = "sound-off-btn"; btn.innerText = "🔇 音效: 關"; }
 }
 
+function formatTimes(timeData) {
+    return Array.isArray(timeData) ? timeData.join(', ') : timeData;
+}
+
+function formatDays(daysData) {
+    const dayNames = ["日","一","二","三","四","五","六"];
+    if (Array.isArray(daysData)) {
+        return "週" + daysData.map(d => dayNames[d]).join('');
+    }
+    return "週" + dayNames[daysData];
+}
+
 // ===================== 渲染卡片 =====================
 function renderBossCards() {
     const container = document.getElementById('bossContainer');
@@ -608,6 +836,12 @@ function renderBossCards() {
     Object.keys(bossConfig).forEach(name => {
         const config = bossConfig[name];
         const card = document.createElement('div');
+        
+        const bossArea = config.area || 'local'; // 若無標示則預設服內
+        const areaMap = { 'local': '🏠服內', 'world': '🌍世界', 'arena': '⚔️競技' };
+        const areaClass = { 'local': 'area-local', 'world': 'area-world', 'arena': 'area-arena' };
+        const areaTagHtml = `<span class="area-tag ${areaClass[bossArea]}">${areaMap[bossArea]}</span>`;
+
         card.className = `boss-card type-${config.type}`;
         card.id = `card-${name}`;
 
@@ -636,14 +870,13 @@ function renderBossCards() {
                 <button class="clear-btn" onclick="clearTime('${name}')">清除時間</button>
             `;
         } else if (config.type === 'daily') {
-            modeTagHtml = `<span class="boss-tag fixed-daily">每日 ${config.time}</span>`;
+            modeTagHtml = `<span class="boss-tag fixed-daily">每日 ${formatTimes(config.time)}</span>`;
             controlHtml = `<div style="display:flex;gap:5px;">
                 <button class="copy-single-btn" onclick="copySingleBoss('${name}',this)">📋 複製</button>
                 <button class="delete-btn" onclick="deleteBoss('${name}')">✖</button>
             </div>`;
         } else if (config.type === 'weekly') {
-            const days = ["週日","週一","週二","週三","週四","週五","週六"];
-            modeTagHtml = `<span class="boss-tag fixed-weekly">${days[config.day]} ${config.time}</span>`;
+            modeTagHtml = `<span class="boss-tag fixed-weekly">${formatDays(config.days !== undefined ? config.days : config.day)} ${formatTimes(config.time)}</span>`;
             controlHtml = `<div style="display:flex;gap:5px;">
                 <button class="copy-single-btn" onclick="copySingleBoss('${name}',this)">📋 複製</button>
                 <button class="delete-btn" onclick="deleteBoss('${name}')">✖</button>
@@ -652,7 +885,7 @@ function renderBossCards() {
 
         card.innerHTML = `
             <div class="info-section">
-                <div class="boss-name">${name} ${modeTagHtml}</div>
+                <div class="boss-name">${areaTagHtml} ${name} ${modeTagHtml}</div>
                 <div class="time-display" id="timeDisplay-${name}">計算中...</div>
                 <div class="boss-status" id="status-${name}">-</div>
             </div>
@@ -666,6 +899,7 @@ function renderBossCards() {
 window.addNewBoss = function() {
     if (!isFirebaseActive) return alert("請先設定 Firebase 金鑰！");
     const nameInput = document.getElementById('newBossName').value.trim();
+    const area      = document.getElementById('newBossArea').value;
     const type      = document.getElementById('newBossType').value;
     if (!nameInput) return alert("請輸入頭目名稱！");
     if (bossConfig[nameInput]) return alert("這個頭目已在清單中！");
@@ -674,23 +908,28 @@ window.addNewBoss = function() {
     if (type === 'interval') {
         const val = parseFloat(document.getElementById('newBossInterval').value);
         if (isNaN(val) || val <= 0) return alert("請輸入正確的間隔小時！");
-        configObj = { type: 'interval', value: val };
-    } else if (type === 'daily') {
-        let t = document.getElementById('newBossDailyTime').value.trim();
-        if (t.length === 4 && !t.includes(':')) t = t.slice(0,2)+':'+t.slice(2,4);
-        if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t)) return alert("請輸入正確的時間！");
-        configObj = { type: 'daily', time: t };
-    } else if (type === 'weekly') {
-        let t = document.getElementById('newBossWeeklyTime').value.trim();
-        if (t.length === 4 && !t.includes(':')) t = t.slice(0,2)+':'+t.slice(2,4);
-        if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t)) return alert("請輸入正確的時間！");
-        const d = parseInt(document.getElementById('newBossWeeklyDay').value);
-        configObj = { type: 'weekly', day: d, time: t };
+        configObj = { type: 'interval', value: val, area: area };
+    } else if (type === 'daily' || type === 'weekly') {
+        const timeRaw = document.getElementById('newBossFixedTimes').value;
+        const timeArr = parseMultiTimeInput(timeRaw);
+        if (!timeArr || timeArr.length === 0) return alert("請輸入正確的時間！(可輸入如 3, 12, 2030，以逗號或空白分隔)");
+
+        if (type === 'daily') {
+            configObj = { type: 'daily', time: timeArr, area: area };
+        } else if (type === 'weekly') {
+            const cbs = document.querySelectorAll('.day-cb:checked');
+            const daysArr = Array.from(cbs).map(cb => parseInt(cb.value));
+            if (daysArr.length === 0) return alert("請至少勾選一天！");
+            configObj = { type: 'weekly', days: daysArr, time: timeArr, area: area };
+        }
     }
 
     db.ref('bossConfig/' + nameInput).set(configObj);
     db.ref('bossData/'   + nameInput).set(null);
     document.getElementById('newBossName').value = '';
+    document.getElementById('newBossInterval').value = '';
+    document.getElementById('newBossFixedTimes').value = '';
+    document.querySelectorAll('.day-cb').forEach(cb => cb.checked = false);
 };
 
 window.deleteBoss = function(name) {
@@ -752,18 +991,36 @@ function triggerNotification(bossName, spawnTimeStr, minutesLeft) {
     }
 }
 
-function getNextFixedTime(now, type, timeStr, dayOfWeek) {
-    if (!timeStr) return now;
-    const [tH, tM] = timeStr.split(':').map(Number);
-    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), tH||0, tM||0, 0);
-    if (type === 'weekly') {
-        let diff = dayOfWeek - target.getDay();
-        if (diff < 0 || (diff === 0 && now - target > 30 * 60 * 1000)) diff += 7; // 🌟 滿30分就切換
-        target.setDate(target.getDate() + diff);
-    } else if (type === 'daily') {
-        if (now - target > 30 * 60 * 1000) target.setDate(target.getDate() + 1); // 🌟 滿30分就切換
-    }
-    return target;
+function getNextFixedTime(now, type, timeData, daysData) {
+    if (!timeData) return now;
+    let times = Array.isArray(timeData) ? timeData : [timeData];
+    let days = Array.isArray(daysData) ? daysData : (daysData !== undefined ? [daysData] : []);
+
+    let candidates = [];
+
+    times.forEach(timeStr => {
+        if (!timeStr) return;
+        const [tH, tM] = timeStr.split(':').map(Number);
+
+        if (type === 'daily') {
+            let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), tH||0, tM||0, 0);
+            if (now - target > 30 * 60 * 1000) target.setDate(target.getDate() + 1);
+            candidates.push(target);
+        } else if (type === 'weekly') {
+            days.forEach(d => {
+                let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), tH||0, tM||0, 0);
+                let diff = d - target.getDay();
+                if (diff < 0 || (diff === 0 && now - target > 30 * 60 * 1000)) diff += 7;
+                target.setDate(target.getDate() + diff);
+                candidates.push(target);
+            });
+        }
+    });
+
+    if (candidates.length === 0) return now;
+    // 將所有推算出的組合根據時間先後排序，取最接近未來的時間 (或剛出現 30 分鐘內的)
+    candidates.sort((a, b) => a.getTime() - b.getTime());
+    return candidates[0];
 }
 
 // ===================== 主更新迴圈 =====================
@@ -773,6 +1030,7 @@ function updateAndSort() {
     document.getElementById('currentTime').innerText = `現在時間: ${hms[0]}:${hms[1]}:${hms[2]}`;
 
     let sortArray = [];
+    let timelineItems = []; // 給右側清單用的資料
 
     Object.keys(bossConfig).forEach(name => {
         try {
@@ -781,6 +1039,14 @@ function updateAndSort() {
             if (!card) return;
             const displayEl = document.getElementById(`timeDisplay-${name}`);
             const statusEl  = document.getElementById(`status-${name}`);
+
+            // 區域過濾邏輯：判斷是否顯示此卡片
+            const bossArea = config.area || 'local';
+            const isVisible = (bossArea === 'local' && areaFilters.local) || 
+                              (bossArea === 'world' && areaFilters.world) || 
+                              (bossArea === 'arena' && areaFilters.arena);
+            
+            card.style.display = isVisible ? 'flex' : 'none';
 
             card.className = `boss-card type-${config.type}`;
             let orderWeight = 0;
@@ -795,7 +1061,7 @@ function updateAndSort() {
                     statusEl.innerText  = '等待輸入...';
                     statusEl.style.color = '#888';
                     orderWeight = 200000000;
-                    sortArray.push({ name, weight: orderWeight }); return;
+                    if (isVisible) sortArray.push({ name, weight: orderWeight }); return;
                 }
 
                 const killDate = parseRecordToDate(record);
@@ -805,7 +1071,7 @@ function updateAndSort() {
                     statusEl.innerText  = '格式異常';
                     statusEl.style.color = '#ff6b6b';
                     orderWeight = 200000000;
-                    sortArray.push({ name, weight: orderWeight }); return;
+                    if (isVisible) sortArray.push({ name, weight: orderWeight }); return;
                 }
 
                 const actualInterval  = isFastMode ? config.value / 2 : config.value;
@@ -818,7 +1084,7 @@ function updateAndSort() {
                     statusEl.innerText  = '請重新登記擊殺時間';
                     statusEl.style.color = '#666';
                     orderWeight = 190000000;
-                    sortArray.push({ name, weight: orderWeight }); return;
+                    if (isVisible) sortArray.push({ name, weight: orderWeight }); return;
                 }
 
                 // ── C / D：正常計算 ──
@@ -871,11 +1137,17 @@ function updateAndSort() {
                         triggerNotification(name + (result.isEstimate ? " (推算)" : ""), `${npH}:${npM}`, diffMin);
                         notifiedSpawns[spawnId] = true;
                     }
+                    
+                    if (isVisible) timelineItems.push({
+                        name: name + (result.isEstimate ? " (推算)" : ""),
+                        timeText: `${npH}:${npM}`,
+                        weight: orderWeight
+                    });
                 }
 
             } else {
                 // ── 固定王（每日 / 每週）──
-                const nextSpawn = getNextFixedTime(now, config.type, config.time, config.day);
+                const nextSpawn = getNextFixedTime(now, config.type, config.time, config.days !== undefined ? config.days : config.day);
                 const diffMs    = nextSpawn - now;
                 const spH       = String(nextSpawn.getHours()).padStart(2,'0');
                 const spM       = String(nextSpawn.getMinutes()).padStart(2,'0');
@@ -906,9 +1178,15 @@ function updateAndSort() {
                     statusEl.style.color = '#ff6b6b';
                     orderWeight = 100000000 + Math.abs(diffMs);
                 }
+                
+                if (isVisible) timelineItems.push({
+                    name: name,
+                    timeText: `${spH}:${spM}` + (diffMs <= 0 ? " (已出)" : ""),
+                    weight: diffMs <= 0 ? diffMs : diffMs // 讓已出或即將出的排在一起
+                });
             }
 
-            sortArray.push({ name, weight: orderWeight });
+            if (isVisible) sortArray.push({ name, weight: orderWeight });
         } catch(err) {
             console.warn(`[updateAndSort] 錯誤 (${name}):`, err);
         }
@@ -919,6 +1197,24 @@ function updateAndSort() {
         const el = document.getElementById(`card-${item.name}`);
         if (el) el.style.order = i;
     });
+    
+    // 更新右側「即將重生清單」
+    timelineItems.sort((a,b) => a.weight - b.weight);
+    const timelineContainer = document.getElementById('timelineContainer');
+    let timelineHTML = '';
+    // 取前 7 隻尚未過期且最接近現在的王
+    timelineItems.slice(0, 7).forEach(item => {
+        let color = '#ccc';
+        if (item.weight < 0 && item.weight > -1800000) color = '#ff6b6b'; // 已出 (30分內)
+        else if (item.weight > 0 && item.weight < 1800000) color = '#ffcc00'; // 30分內即將出
+        
+        timelineHTML += `
+            <div class="timeline-item" style="border-left-color: ${color}">
+                <div class="t-name"><span>${item.name}</span> <span style="color:${color}">${item.timeText}</span></div>
+            </div>`;
+    });
+    if (timelineHTML === '') timelineHTML = '<div style="color:#888; text-align:center;">目前沒有即將重生的首領</div>';
+    if (timelineContainer.innerHTML !== timelineHTML) timelineContainer.innerHTML = timelineHTML;
 }
 
 setInterval(updateAndSort, 1000);
